@@ -115,4 +115,95 @@ void executeEdgeInferenceMatrix(float tempC, int gasRaw, int pirMotion, int luxR
         return;
     }
     
-    // SCENARIO 2: COOKING MODE (Motion + Temperature
+    // SCENARIO 2: COOKING MODE (Motion + Temperature Rise)
+    if (pirMotion == HIGH && tempC > (adaptiveBaselineTemp + 2.0)) {
+        lcd.setCursor(0, 0); lcd.print("Mode: Cooking   ");
+        lcd.setCursor(0, 1); lcd.print("Aux Fan Active  ");
+        
+        digitalWrite(PIN_LED_RED, LOW);
+        noTone(PIN_ACT_BUZZER);
+        digitalWrite(PIN_ACT_RELAY, LOW);
+        positionMicroServo(45);            // Actuate fan vector to 45
+        return;
+    }
+
+    // Default System State when awake but sorting data
+    lcd.setCursor(0, 0); lcd.print("AI Awake Process");
+    lcd.setCursor(0, 1); lcd.print("Analyzing Edge..");
+}
+
+void loop() {
+    unsigned long currentMillis = millis();
+    
+    int rawTempVal = analogRead(PIN_SENS_TEMP);
+    int rawGasVal  = analogRead(PIN_SENS_GAS);
+    int rawLDRVal  = analogRead(PIN_SENS_LDR);
+    int rawPIRVal  = digitalRead(PIN_SENS_PIR);
+    float currentCelsius = (calculateVoltage(rawTempVal) - 0.5) * 100.0;
+
+    // Fast-Interval Neuromorphic Processing Engine
+    if (currentMillis - previousSamplingTime >= SAMPLING_INTERVAL) {
+        previousSamplingTime = currentMillis;
+
+        float deltaTemp = abs(rawTempVal - prevRawTemp);
+        float deltaGas  = abs(rawGasVal - prevRawGas);
+        float deltaLDR  = abs(rawLDRVal - prevRawLDR);
+        
+        membranePotentialTemp += deltaTemp;
+        membranePotentialGas  += deltaGas;
+        membranePotentialLDR  += deltaLDR;
+        
+        // High leakage prevents threshold sticking
+        membranePotentialTemp = max(0.0, membranePotentialTemp - LEAK_RATE);
+        membranePotentialGas  = max(0.0, membranePotentialGas - LEAK_RATE);
+        membranePotentialLDR  = max(0.0, membranePotentialLDR - LEAK_RATE);
+        
+        prevRawTemp = rawTempVal;
+        prevRawGas  = rawGasVal;
+        prevRawLDR  = rawLDRVal;
+
+        // Smooth background adaptation running passively
+        adaptiveBaselineTemp = (adaptiveBaselineTemp * 0.99) + (currentCelsius * 0.01);
+        adaptiveBaselineGas  = (adaptiveBaselineGas * 0.99) + (rawGasVal * 0.01);
+    }
+    
+    // Evaluate Composite Synaptic Network Potentials
+    float aggregatedSynapticNetworkActionPotential = 0.0;
+    if (membranePotentialTemp > SPIKE_THRESHOLD)   aggregatedSynapticNetworkActionPotential += 10.0; 
+    if (membranePotentialGas > SPIKE_THRESHOLD)    aggregatedSynapticNetworkActionPotential += 10.0; 
+    if (membranePotentialLDR > SPIKE_THRESHOLD)    aggregatedSynapticNetworkActionPotential += 5.0; 
+    if (rawPIRVal == HIGH)                         aggregatedSynapticNetworkActionPotential += 20.0; 
+
+    // State Routing Controller
+    if (aggregatedSynapticNetworkActionPotential >= GLOBAL_ACTIVATION) {
+        isSystemAwake = true;
+        previousWakeHoldTime = currentMillis; // Keep feeding our countdown timer while sliders are hot
+        
+        digitalWrite(PIN_LED_GREEN, LOW);
+        digitalWrite(PIN_LED_YELLOW, HIGH);
+        
+        executeEdgeInferenceMatrix(currentCelsius, rawGasVal, rawPIRVal, rawLDRVal);
+        forceLcdUpdate = true;
+    } 
+    // Fall back to sleep state instantly after 750ms of complete quiet
+    else if (isSystemAwake && (currentMillis - previousWakeHoldTime >= WAKE_HOLD_DURATION)) {
+        isSystemAwake = false;
+        noTone(PIN_ACT_BUZZER);
+        digitalWrite(PIN_ACT_RELAY, LOW);
+        positionMicroServo(0);
+        forceLcdUpdate = true;
+    }
+
+    // SCENARIO 1: FORCE SLEEP MODE
+    if (!isSystemAwake) {
+        digitalWrite(PIN_LED_GREEN, HIGH);
+        digitalWrite(PIN_LED_YELLOW, LOW);
+        digitalWrite(PIN_LED_RED, LOW);
+        
+        if (forceLcdUpdate) {
+            lcd.setCursor(0, 0); lcd.print("BioPulse: Sleep ");
+            lcd.setCursor(0, 1); lcd.print("Power State: uW ");
+            forceLcdUpdate = false; 
+        }
+    }
+}
