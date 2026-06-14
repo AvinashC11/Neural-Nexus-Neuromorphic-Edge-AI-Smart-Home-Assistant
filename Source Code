@@ -202,7 +202,7 @@ void loop() {
         
         if (forceLcdUpdate) {
             lcd.setCursor(0, 0); lcd.print("BioPulse: Sleep ");
-            lcd.setCursor(0, 1); lcd.print("Power State: uW ");
+            lcd.setCursor(0, 1); lcd.print("Power State: Micro W ");
             forceLcdUpdate = false; 
         }
     }
