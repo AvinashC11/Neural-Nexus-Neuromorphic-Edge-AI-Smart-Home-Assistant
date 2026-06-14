@@ -1,7 +1,7 @@
 /**
  * @file smart_home.ino
- * @brief Fixed Non-Blocking Neuromorphic Edge AI Core Firmware
- * @note Replaced blocking delays with millis() timing arrays to prevent loop lag.
+ * @brief Ultra-Fast Presentation-Optimized BioPulse Firmware
+ * @note Tuned explicitly for instant state-switching during a 2-minute live demo.
  */
 
 #include <LiquidCrystal.h>
@@ -30,10 +30,10 @@ const int PIN_LED_RED    = A3; // State: Critical Hazard Overdrive
 // --- LIQUID CRYSTAL DRIVER OBJECT ---
 LiquidCrystal lcd(PIN_LCD_RS, PIN_LCD_E, PIN_LCD_D4, PIN_LCD_D5, PIN_LCD_D6, PIN_LCD_D7);
 
-// --- NEUROMORPHIC LAYER PARAMETERS ---
-const float LEAK_RATE          = 0.25;  // Adjusted scale for non-blocking loop speeds
-const float SPIKE_THRESHOLD    = 15.0;  
-const float GLOBAL_ACTIVATION  = 35.0;  
+// --- ACCELERATED NEUROMORPHIC PARAMETERS ---
+const float LEAK_RATE          = 0.80;  // Aggressive leak rate for fast recovery
+const float SPIKE_THRESHOLD    = 5.0;   // Highly sensitive local trigger barrier
+const float GLOBAL_ACTIVATION  = 15.0;  // Rapid network ignition limit
 
 // --- MEMBRANE ACCUMULATOR STORAGE ---
 float membranePotentialTemp = 0.0;
@@ -49,11 +49,11 @@ int prevRawLDR  = 500;
 float adaptiveBaselineTemp = 25.0;  
 float adaptiveBaselineGas  = 150.0; 
 
-// --- FIXED NON-BLOCKING TIMING REGISTERS ---
+// --- CRITICAL PRESENTATION TIMING REGISTERS ---
 unsigned long previousSamplingTime = 0;
 unsigned long previousWakeHoldTime  = 0;
-const unsigned long SAMPLING_INTERVAL = 100; // Sample precisely every 100ms
-const unsigned long WAKE_HOLD_DURATION = 2000; // Hold active AI state for 2 seconds minimum
+const unsigned long SAMPLING_INTERVAL = 50;     // Sample rapidly every 50ms
+const unsigned long WAKE_HOLD_DURATION = 750;   // Snappy recovery: drop to sleep in 750ms flat
 
 // --- SYSTEM STATE FLAGS ---
 bool isSystemAwake = false;
@@ -64,10 +64,10 @@ float calculateVoltage(int analogADCReading) {
     return (analogADCReading * 5.0) / 1023.0;
 }
 
-// --- OPTIMIZED SERVO CONTROLLER ---
+// --- STREAMLINED SERVO CONTROLLER ---
 void positionMicroServo(int angularDegrees) {
     int highPulseDuration = map(angularDegrees, 0, 180, 500, 2400);
-    for(int dutyCycles = 0; dutyCycles < 5; dutyCycles++) { // Streamlined duty cycle load
+    for(int dutyCycles = 0; dutyCycles < 3; dutyCycles++) { // Minimum duty execution for instant snap
         digitalWrite(PIN_ACT_SERVO, HIGH);
         delayMicroseconds(highPulseDuration);
         digitalWrite(PIN_ACT_SERVO, LOW);
@@ -95,138 +95,24 @@ void setup() {
     lcd.print("BioPulse Engine");
     lcd.setCursor(0, 1);
     lcd.print("System Ready...");
-    delay(1000); 
+    delay(500); // Short startup flash
     lcd.clear();
     
-    Serial.println(F("[SYSTEM INITIALIZED] - Free Running Neuromorphic Core Active."));
+    Serial.println(F("[SYSTEM INITIALIZED] - Optimized Demo Mode Active."));
 }
 
-// --- CONTEXT-AWARE INFERENCE MATRIX ---
+// --- DEMO-DRIVEN INFERENCE MATRIX ---
 void executeEdgeInferenceMatrix(float tempC, int gasRaw, int pirMotion, int luxRaw) {
-    // Scenario Alpha: Fire Condition
-    if (tempC > (adaptiveBaselineTemp + 8.0) && gasRaw > (adaptiveBaselineGas + 100)) {
-        Serial.println(F("!! CRITICAL HAZARD: RESIDENTIAL FIRE !!"));
+    // SCENARIO 3: CRITICAL FIRE ALERT (High Gas + High Heat)
+    if (tempC > (adaptiveBaselineTemp + 5.0) && gasRaw > (adaptiveBaselineGas + 80)) {
         lcd.setCursor(0, 0); lcd.print("## FIRE ALERT ##");
         lcd.setCursor(0, 1); lcd.print("Venting Perimeter");
         
         digitalWrite(PIN_LED_RED, HIGH);
         tone(PIN_ACT_BUZZER, 2200);        
-        digitalWrite(PIN_ACT_RELAY, HIGH); 
-        positionMicroServo(180);           
+        digitalWrite(PIN_ACT_RELAY, HIGH); // Snap relay over
+        positionMicroServo(180);           // Swing servo wide open to 180
         return;
     }
     
-    // Scenario Beta: Gas Leak
-    if (gasRaw > (adaptiveBaselineGas + 120) && pirMotion == LOW) {
-        Serial.println(F("!! SAFETY WARNING: GAS LEAK ACCUMULATION !!"));
-        lcd.setCursor(0, 0); lcd.print("Gas Leak Evac!  ");
-        lcd.setCursor(0, 1); lcd.print("Fans Initiated  ");
-        
-        digitalWrite(PIN_LED_RED, HIGH);
-        tone(PIN_ACT_BUZZER, 880); 
-        positionMicroServo(90);    
-        digitalWrite(PIN_ACT_RELAY, LOW);
-        return;
-    }
-    
-    // Scenario Gamma: Intruder Detection
-    if (pirMotion == HIGH && luxRaw < 150) { 
-        Serial.println(F("CONTEXT ALERT: Security Boundary Breach."));
-        lcd.setCursor(0, 0); lcd.print("Intruder Active!");
-        lcd.setCursor(0, 1); lcd.print("Securing Space  ");
-        
-        tone(PIN_ACT_BUZZER, 1500, 100); // Non-blocking tone burst
-        return;
-    }
-    
-    // Scenario Delta: Cooking Activities
-    if (pirMotion == HIGH && tempC > (adaptiveBaselineTemp + 3.0)) {
-        Serial.println(F("CONTEXT RADAR: Occupant cooking signature verified."));
-        lcd.setCursor(0, 0); lcd.print("Mode: Cooking   ");
-        lcd.setCursor(0, 1); lcd.print("Aux Fan Active  ");
-        
-        positionMicroServo(45); 
-        return;
-    }
-
-    // Default processing text
-    lcd.setCursor(0, 0); lcd.print("AI Awake Process");
-    lcd.setCursor(0, 1); lcd.print("Analyzing Edge..");
-}
-
-void loop() {
-    unsigned long currentMillis = millis();
-    
-    // Capture raw metrics continuously to ensure no spike data points are missed
-    int rawTempVal = analogRead(PIN_SENS_TEMP);
-    int rawGasVal  = analogRead(PIN_SENS_GAS);
-    int rawLDRVal  = analogRead(PIN_SENS_LDR);
-    int rawPIRVal  = digitalRead(PIN_SENS_PIR);
-    float currentCelsius = (calculateVoltage(rawTempVal) - 0.5) * 100.0;
-
-    // 1. Fixed-Interval Neuromorphic Accumulator Processing
-    if (currentMillis - previousSamplingTime >= SAMPLING_INTERVAL) {
-        previousSamplingTime = currentMillis;
-
-        float deltaTemp = abs(rawTempVal - prevRawTemp);
-        float deltaGas  = abs(rawGasVal - prevRawGas);
-        float deltaLDR  = abs(rawLDRVal - prevRawLDR);
-        
-        membranePotentialTemp += deltaTemp;
-        membranePotentialGas  += deltaGas;
-        membranePotentialLDR  += deltaLDR;
-        
-        // Passive Mathematical Leak Calculations
-        membranePotentialTemp = max(0.0, membranePotentialTemp - LEAK_RATE);
-        membranePotentialGas  = max(0.0, membranePotentialGas - LEAK_RATE);
-        membranePotentialLDR  = max(0.0, membranePotentialLDR - LEAK_RATE);
-        
-        prevRawTemp = rawTempVal;
-        prevRawGas  = rawGasVal;
-        prevRawLDR  = rawLDRVal;
-
-        // Exponential baseline adaptation
-        adaptiveBaselineTemp = (adaptiveBaselineTemp * 0.995) + (currentCelsius * 0.005);
-        adaptiveBaselineGas  = (adaptiveBaselineGas * 0.995) + (rawGasVal * 0.005);
-    }
-    
-    // 2. Synthesize Action Potentials
-    float aggregatedSynapticNetworkActionPotential = 0.0;
-    if (membranePotentialTemp > SPIKE_THRESHOLD)   aggregatedSynapticNetworkActionPotential += 20.0; 
-    if (membranePotentialGas > SPIKE_THRESHOLD)    aggregatedSynapticNetworkActionPotential += 25.0; 
-    if (membranePotentialLDR > SPIKE_THRESHOLD)    aggregatedSynapticNetworkActionPotential += 10.0; 
-    if (rawPIRVal == HIGH)                         aggregatedSynapticNetworkActionPotential += 30.0; 
-
-    // 3. Finite State Machine Orchestration (State Switches)
-    if (aggregatedSynapticNetworkActionPotential >= GLOBAL_ACTIVATION) {
-        isSystemAwake = true;
-        previousWakeHoldTime = currentMillis; // Constantly reset our countdown timer while spikes hit
-        
-        digitalWrite(PIN_LED_GREEN, LOW);
-        digitalWrite(PIN_LED_YELLOW, HIGH);
-        
-        executeEdgeInferenceMatrix(currentCelsius, rawGasVal, rawPIRVal, rawLDRVal);
-        forceLcdUpdate = true;
-    } 
-    // Check if the holding timer window has expired before returning to sleep mode
-    else if (isSystemAwake && (currentMillis - previousWakeHoldTime >= WAKE_HOLD_DURATION)) {
-        isSystemAwake = false;
-        noTone(PIN_ACT_BUZZER);
-        digitalWrite(PIN_ACT_RELAY, LOW);
-        positionMicroServo(0);
-        forceLcdUpdate = true;
-    }
-
-    // 4. Low-Power Display Updates
-    if (!isSystemAwake) {
-        digitalWrite(PIN_LED_GREEN, HIGH);
-        digitalWrite(PIN_LED_YELLOW, LOW);
-        digitalWrite(PIN_LED_RED, LOW);
-        
-        if (forceLcdUpdate) {
-            lcd.setCursor(0, 0); lcd.print("BioPulse: Sleep ");
-            lcd.setCursor(0, 1); lcd.print("Power State: uW ");
-            forceLcdUpdate = false; 
-        }
-    }
-}
+    // SCENARIO 2: COOKING MODE (Motion + Temperature
