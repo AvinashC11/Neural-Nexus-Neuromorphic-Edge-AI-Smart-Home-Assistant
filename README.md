@@ -40,4 +40,7 @@ Small environmental fluctuations are passively leaked away. Only when local phys
 
 ---
 
-## 📂 Project Structure
+## Authors:
+* 1. Avinash.C, 25BCY10032
+* 2. Anirudh Vamsi, 25MIB10033
+* 3. Pawinhari.R, 25BOE100
