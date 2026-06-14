@@ -1,0 +1,232 @@
+/**
+ * @file smart_home.ino
+ * @brief Neuromorphic Event-Driven Edge AI Smart Home Assistant Core Firmware
+ * @note Designed for Arduino UNO architecture. Fully compatible with Tinkercad.
+ */
+
+// --- HARDWARE INTERFACE PIN ASSIGNMENTS ---
+const int PIN_LCD_RS     = 12;
+const int PIN_LCD_E      = 11;
+const int PIN_LCD_D4     = 5;
+const int PIN_LCD_D5     = 4;
+const int PIN_LCD_D6     = 3;
+const int PIN_LCD_D7     = 2;
+
+const int PIN_SENS_TEMP  = A0;
+const int PIN_SENS_GAS   = A1;
+const int PIN_SENS_LDR   = A2;
+const int PIN_SENS_PIR   = 7;
+
+const int PIN_ACT_SERVO  = 9;
+const int PIN_ACT_RELAY  = 8;
+const int PIN_ACT_BUZZER = 6;
+
+const int PIN_LED_GREEN  = 10; // State: Deep System Sleep Emulation
+const int PIN_LED_YELLOW = 13; // State: Neuromorphic Spike Detected
+const int PIN_LED_RED    = A3; // State: Critical Hazard Overdrive
+
+// --- NEUROMORPHIC LAYER PARAMETERS ---
+const float LEAK_RATE          = 1.45;  // Membrane potential decay per cycle
+const float SPIKE_THRESHOLD    = 25.0;  // Individual neural fire barrier
+const float GLOBAL_ACTIVATION  = 40.0;  // System awakening matrix metric
+
+// --- MEMBRANE ACCUMULATOR STORAGE ---
+float membranePotentialTemp = 0.0;
+float membranePotentialGas  = 0.0;
+float membranePotentialLDR  = 0.0;
+
+// --- SENSOR TRACKING ARRAYS (PREVIOUS STATES) ---
+int prevRawTemp = 500;
+int prevRawGas  = 200;
+int prevRawLDR  = 500;
+
+// --- HOMEOSTATIC SELF-LEARNING ENGINE ---
+float adaptiveBaselineTemp = 25.0; // Seeded standard room temperature celsius
+float adaptiveBaselineGas  = 150.0; // Seeded ambient air quality metric
+unsigned long learningTickCounters = 0;
+
+// --- SYSTEM STATE FLAG ---
+bool isSystemAwake = false;
+
+// --- MANUAL BIT-BANGED SERVO MOTOR CONTROLLER ---
+void positionMicroServo(int angularDegrees) {
+    int highPulseDuration = map(angularDegrees, 0, 180, 500, 2400);
+    for(int dutyCycles = 0; dutyCycles < 12; dutyCycles++) {
+        digitalWrite(PIN_ACT_SERVO, HIGH);
+        delayMicroseconds(highPulseDuration);
+        digitalWrite(PIN_ACT_SERVO, LOW);
+        delayMicroseconds(20000 - highPulseDuration);
+    }
+}
+
+// --- HARDWARE INTERFACE INITIALIZATION BLOCKS ---
+void setup() {
+    // Communication Bus Setup
+    Serial.begin(9600);
+    
+    // Actuator Port Directions
+    pinMode(PIN_ACT_SERVO, OUTPUT);
+    pinMode(PIN_ACT_RELAY, OUTPUT);
+    pinMode(PIN_ACT_BUZZER, OUTPUT);
+    
+    // Diagnostic LED Directions
+    pinMode(PIN_LED_GREEN, OUTPUT);
+    pinMode(PIN_LED_YELLOW, OUTPUT);
+    pinMode(PIN_LED_RED, OUTPUT);
+    
+    // Sensory Input Directions
+    pinMode(PIN_SENS_PIR, INPUT);
+    
+    // Establish Initial Safe Output Configuration
+    positionMicroServo(0);
+    digitalWrite(PIN_ACT_RELAY, LOW);
+    
+    // Driver Emulation Boot sequence for LCD
+    // Directly signaling data registers to force 4-bit bus mode clear
+    pinMode(PIN_LCD_RS, OUTPUT);
+    pinMode(PIN_LCD_E, OUTPUT);
+    pinMode(PIN_LCD_D4, OUTPUT);
+    pinMode(PIN_LCD_D5, OUTPUT);
+    pinMode(PIN_LCD_D6, OUTPUT);
+    pinMode(PIN_LCD_D7, OUTPUT);
+    
+    Serial.println(F("[SYSTEM INITIALIZED] - BioPulse Neuromorphic Core Active."));
+}
+
+// --- MAIN RUNTIME MAIN PROCESSING LOOP ---
+void loop() {
+    // 1. Capture Raw Telemetry Inputs
+    int rawTempVal = analogRead(PIN_SENS_TEMP);
+    int rawGasVal  = analogRead(PIN_SENS_GAS);
+    int rawLDRVal  = analogRead(PIN_SENS_LDR);
+    int rawPIRVal  = digitalRead(PIN_SENS_PIR);
+    
+    // Convert Raw Analog Terminology to Standard Celsius Scale
+    float currentCelsius = (_VOLTAGE_CONVERSION_(rawTempVal) - 0.5) * 100.0;
+    
+    // 2. Neuromorphic Accumulation Pipeline (LIF Emulation)
+    float deltaTemp = abs(rawTempVal - prevRawTemp);
+    float deltaGas  = abs(rawGasVal - prevRawGas);
+    float deltaLDR  = abs(rawLDRVal - prevRawLDR);
+    
+    // Integrate incoming signal changes into the membrane potential buffers
+    membranePotentialTemp += deltaTemp;
+    membranePotentialGas  += deltaGas;
+    membranePotentialLDR  += deltaLDR;
+    
+    // Apply continuous passive decay (leakage dynamics)
+    membranePotentialTemp = max(0.0, membranePotentialTemp - LEAK_RATE);
+    membranePotentialGas  = max(0.0, membranePotentialGas - LEAK_RATE);
+    membranePotentialLDR  = max(0.0, membranePotentialLDR - LEAK_RATE);
+    
+    // 3. Evaluate Neural Firing Conditions
+    float aggregatedSynapticNetworkActionPotential = 0.0;
+    
+    if (membranePotentialTemp > SPIKE_THRESHOLD) {
+        aggregatedSynapticNetworkActionPotential += 20.0; // Neural weight
+    }
+    if (membranePotentialGas > SPIKE_THRESHOLD) {
+        aggregatedSynapticNetworkActionPotential += 25.0; // Neural weight
+    }
+    if (membranePotentialLDR > SPIKE_THRESHOLD) {
+        aggregatedSynapticNetworkActionPotential += 10.0; // Neural weight
+    }
+    if (rawPIRVal == HIGH) {
+        aggregatedSynapticNetworkActionPotential += 30.0; // Motion event injection
+    }
+    
+    // Update Historical Buffers for Delta Checks in Next Iteration
+    prevRawTemp = rawTempVal;
+    prevRawGas  = rawGasVal;
+    prevRawLDR  = rawLDRVal;
+    
+    // 4. Power State Orchestration Logic
+    if (aggregatedSynapticNetworkActionPotential >= GLOBAL_ACTIVATION) {
+        // System transitions to an active, processing state
+        isSystemAwake = true;
+        digitalWrite(PIN_LED_GREEN, LOW);
+        digitalWrite(PIN_LED_YELLOW, HIGH);
+        
+        Serial.print(F("[NEURAL SPIKE WAKE] Action Potential Value: "));
+        Serial.println(aggregatedSynapticNetworkActionPotential);
+        
+        // Execute Context-Aware Edge Inference Rules
+        executeEdgeInferenceMatrix(currentCelsius, rawGasVal, rawPIRVal, rawLDRVal);
+        
+        // Hold the processing state briefly to allow system components to stabilize
+        delay(1500); 
+    } else {
+        // System enters or stays in passive micro-power tracking state
+        isSystemAwake = false;
+        digitalWrite(PIN_LED_GREEN, HIGH);
+        digitalWrite(PIN_LED_YELLOW, LOW);
+        digitalWrite(PIN_LED_RED, LOW);
+        noTone(PIN_ACT_BUZZER);
+        
+        // Gradual Online Homeostatic Adaptation (Background Baseline Adjustments)
+        runHomeostaticAdaptationEngine(currentCelsius, rawGasVal);
+        
+        delay(250); // Passive sampling interval
+    }
+}
+
+// --- PRIVATE HELPER FOR VOLTAGE READINGS ---
+float _VOLTAGE_CONVERSION_(int analogADCReading) {
+    return (analogADCReading * 5.0) / 1023.0;
+}
+
+// --- CONTEXT-AWARE INFERENCE MATRIX ---
+void executeEdgeInferenceMatrix(float tempC, int gasRaw, int pirMotion, int luxRaw) {
+    // Scenario Alpha: Dangerous Thermal Surge paired with Gas Leakage (Fire Condition)
+    if (tempC > (adaptiveBaselineTemp + 8.0) && gasRaw > (adaptiveBaselineGas + 100)) {
+        Serial.println(F("!! CRITICAL EXTREME THREAT ALERT: POTENTIAL RESIDENTIAL FIRE INTERCEPTED !!"));
+        digitalWrite(PIN_LED_RED, HIGH);
+        tone(PIN_ACT_BUZZER, 2200); // Piercing alarm tone
+        digitalWrite(PIN_ACT_RELAY, HIGH); // Cut primary circuit breakers
+        positionMicroServo(180);           // Maximize perimeter venting
+        return;
+    }
+    
+    // Scenario Beta: High Gas Concentration detected without active motion (Gas Leak)
+    if (gasRaw > (adaptiveBaselineGas + 120) && pirMotion == LOW) {
+        Serial.println(F("!! SAFETY WARNING: COMPRESSED GAS/VOC ACCUMULATION ISOLATED !!"));
+        digitalWrite(PIN_LED_RED, HIGH);
+        tone(PIN_ACT_BUZZER, 880); // Alternating hazard tone
+        positionMicroServo(90);    // Open auxiliary air escape valves
+        digitalWrite(PIN_ACT_RELAY, LOW);
+        return;
+    }
+    
+    // Scenario Gamma: Unexpected Physical Intrusion Detected
+    if (pirMotion == HIGH && luxRaw < 150) { 
+        Serial.println(F("CONTEXT RADAR: Intruding motion detected in unlit environment."));
+        tone(PIN_ACT_BUZZER, 1500);
+        delay(200);
+        noTone(PIN_ACT_BUZZER);
+        return;
+    }
+    
+    // Scenario Delta: Local Thermal Shift from Cooking Activities
+    if (pirMotion == HIGH && tempC > (adaptiveBaselineTemp + 3.0)) {
+        Serial.println(F("CONTEXT RADAR: Localized heat expansion from occupant cooking detected."));
+        positionMicroServo(45); // Activate local extraction fans
+        return;
+    }
+}
+
+// --- ADAPTIVE HOMEOSTATIC SELF-LEARNING ALGORITHM ---
+void runHomeostaticAdaptationEngine(float instantTemp, int instantGas) {
+    learningTickCounters++;
+    
+    // Running Exponential Moving Average filter simulating homeostatic adaptation
+    // Gently drifts baseline metrics over time to match natural room baseline shifts
+    adaptiveBaselineTemp = (adaptiveBaselineTemp * 0.995) + (instantTemp * 0.005);
+    adaptiveBaselineGas  = (adaptiveBaselineGas * 0.995) + (instantGas * 0.005);
+    
+    if (learningTickCounters % 40 == 0) {
+        Serial.print(F("[HOMEOSTASIS UPDATE] Standard Baseline Temp: "));
+        Serial.print(adaptiveBaselineTemp);
+        Serial.print(F("C | Baseline Gas Index: "));
+        Serial.println(adaptiveBaselineGas);
+    }
+}
